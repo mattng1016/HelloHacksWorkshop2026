@@ -1,16 +1,34 @@
 import { useState } from 'react'
 
 function App() {
-  const [selectedType, setSelectedType] = useState('')
+  const [matchup, setMatchup] = useState(null)
+  const [error, setError] = useState('')
 
-  function getMatchup(type) {
-    // API CALL WILL GO HERE, AND WE WILL RETURN THE RESPONSE
-    return `Fake API response: You are fighting a ${type}-type Pokémon.`;
+  async function getMatchup(type) {
+    try {
+      const response = await fetch(`http://localhost:5001/api/type/${encodeURIComponent(type)}`)
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Could not get the matchup.')
+      }
+
+      return data
+    } catch (requestError) {
+      console.error('Failed to get matchup:', requestError)
+      throw requestError
+    }
   }
 
-  function handleTypeClick(type) {
-    const response = getMatchup(type);
-    setSelectedType(response);
+  async function handleTypeClick(type) {
+    setError('')
+    try {
+      const response = await getMatchup(type)
+      setMatchup(response)
+    } catch {
+      setMatchup(null)
+      setError('Could not load matchup. Check that the backend is running on port 5001.')
+    }
   }
 
   return (
@@ -34,7 +52,7 @@ function App() {
             <button
               key={type}
               className={`rounded-xl border-2 border-slate-900 px-4 py-3 font-bold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-500 ${color}`}
-              onClick={() => handleTypeClick(type.name)}
+              onClick={() => handleTypeClick(type)}
               type="button"
             >
               {type}
@@ -42,7 +60,13 @@ function App() {
           ))}
         </div>
 
-        {selectedType && <p className="mt-5 text-slate-700">{selectedType}</p>}
+        {error && <p className="mt-5 text-red-700" role="alert">{error}</p>}
+        {matchup && (
+          <div className="mt-5 text-slate-700">
+            <p>Half damage to: {matchup.half_damage_to.join(', ') || 'none'}</p>
+            <p>Double damage from: {matchup.double_damage_from.join(', ') || 'none'}</p>
+          </div>
+        )}
       </section>
     </main>
   )
